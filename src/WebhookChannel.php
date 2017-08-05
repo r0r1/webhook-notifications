@@ -3,15 +3,24 @@
 namespace NotificationChannels\WebhookNotifications;
 
 use NotificationChannels\WebhookNotifications\Exceptions\CouldNotSendNotification;
-use NotificationChannels\WebhookNotifications\Events\MessageWasSent;
-use NotificationChannels\WebhookNotifications\Events\SendingMessage;
 use Illuminate\Notifications\Notification;
+use GuzzleHttp\Client;
 
 class WebhookChannel
 {
-    public function __construct()
+    /**
+     * @var \GuzzleHttp
+     */
+    protected $client;
+
+    /**
+     * WebhookChannel Constructor
+     * 
+     * @param Client $client
+     */
+    public function __construct(Client $client)
     {
-        // Initialisation code here
+        $this->client = $client;
     }
 
     /**
@@ -24,10 +33,14 @@ class WebhookChannel
      */
     public function send($notifiable, Notification $notification)
     {
-        //$response = [a call to the api of your notification send]
+        if (! $webhookEndpoint = collect($notifiable->routeNotificationFor('WebhookNotifications'))) {
+            return;
+        }
 
-//        if ($response->error) { // replace this by the code need to check for errors
-//            throw CouldNotSendNotification::serviceRespondedWithAnError($response);
-//        }
+        $response = $this->client->post($webhookEndpoint);
+
+        if ($response->getStatusCode() !== 200) {
+            throw CouldNotSendNotification::serviceRespondedWithAnError($response);
+        }
     }
 }
